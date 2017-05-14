@@ -107,6 +107,10 @@
 #import <Foundation/NSNull.h>
 #import <Foundation/NSObjCRuntime.h>
 
+_Pragma("clang diagnostic push")
+#pragma clang diagnostic ignored "-Wformat"
+
+
 #ifdef JK_ENABLE_CF_TRANSFER_OWNERSHIP_CALLBACKS
 #warning As of JSONKit v1.4, JK_ENABLE_CF_TRANSFER_OWNERSHIP_CALLBACKS is no longer required.  It is no longer a valid option.
 #endif
@@ -196,7 +200,6 @@
 #else  // defined (__GNUC__) && (__GNUC__ >= 4) && (__GNUC_MINOR__ >= 3)
 #define JK_ALLOC_SIZE_NON_NULL_ARGS_WARN_UNUSED(as, nn, ...) JK_ATTRIBUTES(warn_unused_result, nonnull(nn, ##__VA_ARGS__))
 #endif // defined (__GNUC__) && (__GNUC__ >= 4) && (__GNUC_MINOR__ >= 3)
-
 
 @class JKArray, JKDictionaryEnumerator, JKDictionary;
 
@@ -1637,7 +1640,7 @@ static int jk_parse_string(JKParseState *parseState) {
           break;
 
         case JSONStringStateEscapedNeedEscapeForSurrogate:
-          if((currentChar == '\\')) { stringState = JSONStringStateEscapedNeedEscapedUForSurrogate; }
+          if(currentChar == '\\') { stringState = JSONStringStateEscapedNeedEscapedUForSurrogate; }
           else { 
             if((parseState->parseOptionFlags & JKParseOptionLooseUnicode) == 0) { jk_error(parseState, @"Required a second \\u Unicode escape sequence following a surrogate \\u Unicode escape sequence."); stringState = JSONStringStateError; goto finishedParsing; }
             else { stringState = JSONStringStateParsing; atStringCharacter--;    if(jk_string_add_unicodeCodePoint(parseState, UNI_REPLACEMENT_CHAR, &tokenBufferIdx, &stringHash)) { jk_error(parseState, @"Internal error: Unable to add UTF8 sequence to internal string buffer. %@ line #%ld", [NSString stringWithUTF8String:__FILE__], (long)__LINE__); stringState = JSONStringStateError; goto finishedParsing; } }
@@ -2998,3 +3001,4 @@ errorExit:
 }
 
 @end
+#pragma clang diagnostic pop //弹出所有的警告
