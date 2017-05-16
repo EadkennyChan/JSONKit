@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name     = 'JSONKit-ZW'
-  s.version  = '2.0.2'
+  s.version  = '2.0.3'
   s.license      = { :type => 'BSD / Apache License, Version 2.0', :file => 'LICENCE' }
   s.summary  = 'A Very High Performance Objective-C JSON Library.'
   s.homepage = 'https://github.com/EadkennyChan/JSONKit'
