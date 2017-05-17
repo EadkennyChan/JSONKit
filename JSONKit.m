@@ -4107,56 +4107,121 @@ static int jk_encode_add_atom_to_buffer(JKEncodeState *encodeState, void *object
 
         slowUTF8Path:
             {
-            CFIndex stringLength        = CFStringGetLength((CFStringRef)object);
-            CFIndex maxStringUTF8Length = CFStringGetMaximumSizeForEncoding(stringLength, kCFStringEncodingUTF8) + 32L;
+                CFIndex stringLength        = CFStringGetLength((CFStringRef)object);
+                CFIndex maxStringUTF8Length = CFStringGetMaximumSizeForEncoding(stringLength, kCFStringEncodingUTF8) + 32L;
 
-            if(JK_EXPECT_F((size_t)maxStringUTF8Length > encodeState->utf8ConversionBuffer.bytes.length) && JK_EXPECT_F(jk_managedBuffer_resize(&encodeState->utf8ConversionBuffer, maxStringUTF8Length + 1024UL) == NULL)) { jk_encode_error(encodeState, @"Unable to resize temporary buffer."); return(1); }
+                if(JK_EXPECT_F((size_t)maxStringUTF8Length > encodeState->utf8ConversionBuffer.bytes.length) && JK_EXPECT_F(jk_managedBuffer_resize(&encodeState->utf8ConversionBuffer, maxStringUTF8Length + 1024UL) == NULL))
+                {
+                    jk_encode_error(encodeState, @"Unable to resize temporary buffer.");
+                    return(1);
+                }
 
-            CFIndex usedBytes = 0L, convertedCount = 0L;
-            convertedCount = CFStringGetBytes((CFStringRef)object, CFRangeMake(0L, stringLength), kCFStringEncodingUTF8, '?', NO, encodeState->utf8ConversionBuffer.bytes.ptr, encodeState->utf8ConversionBuffer.bytes.length - 16L, &usedBytes);
-            if(JK_EXPECT_F(convertedCount != stringLength) || JK_EXPECT_F(usedBytes < 0L)) { jk_encode_error(encodeState, @"An error occurred converting the contents of a NSString to UTF8."); return(1); }
+                CFIndex usedBytes = 0L, convertedCount = 0L;
+                convertedCount = CFStringGetBytes((CFStringRef)object, CFRangeMake(0L, stringLength), kCFStringEncodingUTF8, '?', NO, encodeState->utf8ConversionBuffer.bytes.ptr, encodeState->utf8ConversionBuffer.bytes.length - 16L, &usedBytes);
+                if(JK_EXPECT_F(convertedCount != stringLength) || JK_EXPECT_F(usedBytes < 0L))
+                {
+                    jk_encode_error(encodeState, @"An error occurred converting the contents of a NSString to UTF8.");
+                    return(1);
+                }
 
-            if(JK_EXPECT_F((encodeState->atIndex + (maxStringUTF8Length * 2UL) + 256UL) > encodeState->stringBuffer.bytes.length) && JK_EXPECT_F(jk_managedBuffer_resize(&encodeState->stringBuffer, encodeState->atIndex + (maxStringUTF8Length * 2UL) + 1024UL) == NULL)) { jk_encode_error(encodeState, @"Unable to resize temporary buffer."); return(1); }
+                if(JK_EXPECT_F((encodeState->atIndex + (maxStringUTF8Length * 2UL) + 256UL) > encodeState->stringBuffer.bytes.length) && JK_EXPECT_F(jk_managedBuffer_resize(&encodeState->stringBuffer, encodeState->atIndex + (maxStringUTF8Length * 2UL) + 1024UL) == NULL))
+                {
+                    jk_encode_error(encodeState, @"Unable to resize temporary buffer.");
+                    return(1);
+                }
 
-            const unsigned char *utf8String = encodeState->utf8ConversionBuffer.bytes.ptr;
+                const unsigned char *utf8String = encodeState->utf8ConversionBuffer.bytes.ptr;
 
-            size_t utf8Idx = 0UL;
-            if(JK_EXPECT_T((encodeState->encodeOption & JKEncodeOptionStringObjTrimQuotes) == 0UL)) { encodeState->stringBuffer.bytes.ptr[encodeState->atIndex++] = '\"'; }
-            for(utf8Idx = 0UL; utf8Idx < (size_t)usedBytes; utf8Idx++) {
-            NSCParameterAssert(((&encodeState->stringBuffer.bytes.ptr[encodeState->atIndex]) - encodeState->stringBuffer.bytes.ptr) < (ssize_t)encodeState->stringBuffer.bytes.length);
-            NSCParameterAssert(encodeState->atIndex < encodeState->stringBuffer.bytes.length);
-            NSCParameterAssert((CFIndex)utf8Idx < usedBytes);
-            if(JK_EXPECT_F(utf8String[utf8Idx] < 0x20U)) {
-            switch(utf8String[utf8Idx]) {
-            case '\b': encodeState->stringBuffer.bytes.ptr[encodeState->atIndex++] = '\\'; encodeState->stringBuffer.bytes.ptr[encodeState->atIndex++] = 'b'; break;
-            case '\f': encodeState->stringBuffer.bytes.ptr[encodeState->atIndex++] = '\\'; encodeState->stringBuffer.bytes.ptr[encodeState->atIndex++] = 'f'; break;
-            case '\n': encodeState->stringBuffer.bytes.ptr[encodeState->atIndex++] = '\\'; encodeState->stringBuffer.bytes.ptr[encodeState->atIndex++] = 'n'; break;
-            case '\r': encodeState->stringBuffer.bytes.ptr[encodeState->atIndex++] = '\\'; encodeState->stringBuffer.bytes.ptr[encodeState->atIndex++] = 'r'; break;
-            case '\t': encodeState->stringBuffer.bytes.ptr[encodeState->atIndex++] = '\\'; encodeState->stringBuffer.bytes.ptr[encodeState->atIndex++] = 't'; break;
-            default: if(JK_EXPECT_F(jk_encode_printf(encodeState, NULL, 0UL, NULL, "\\u%4.4x", utf8String[utf8Idx]))) { return(1); } break;
-            }
-            } else {
-            if(JK_EXPECT_F(utf8String[utf8Idx] >= 0x80U) && (encodeState->serializeOptionFlags & JKSerializeOptionEscapeUnicode)) {
-            const unsigned char *nextValidCharacter = NULL;
-            UTF32                u32ch              = 0U;
-            ConversionResult     result;
+                size_t utf8Idx = 0UL;
+                if(JK_EXPECT_T((encodeState->encodeOption & JKEncodeOptionStringObjTrimQuotes) == 0UL))
+                {
+                    encodeState->stringBuffer.bytes.ptr[encodeState->atIndex++] = '\"';
+                }
+                for(utf8Idx = 0UL; utf8Idx < (size_t)usedBytes; utf8Idx++)
+                {
+                    NSCParameterAssert(((&encodeState->stringBuffer.bytes.ptr[encodeState->atIndex]) - encodeState->stringBuffer.bytes.ptr) < (ssize_t)encodeState->stringBuffer.bytes.length);
+                    NSCParameterAssert(encodeState->atIndex < encodeState->stringBuffer.bytes.length);
+                    NSCParameterAssert((CFIndex)utf8Idx < usedBytes);
+                    if(JK_EXPECT_F(utf8String[utf8Idx] < 0x20U))
+                    {
+                        switch(utf8String[utf8Idx])
+                        {
+                            case '\b':
+                                encodeState->stringBuffer.bytes.ptr[encodeState->atIndex++] = '\\';
+                                encodeState->stringBuffer.bytes.ptr[encodeState->atIndex++] = 'b';
+                                break;
+                            case '\f':
+                                encodeState->stringBuffer.bytes.ptr[encodeState->atIndex++] = '\\';
+                                encodeState->stringBuffer.bytes.ptr[encodeState->atIndex++] = 'f';
+                                break;
+                            case '\n':
+                                encodeState->stringBuffer.bytes.ptr[encodeState->atIndex++] = '\\';
+                                encodeState->stringBuffer.bytes.ptr[encodeState->atIndex++] = 'n';
+                                break;
+                            case '\r':
+                                encodeState->stringBuffer.bytes.ptr[encodeState->atIndex++] = '\\';
+                                encodeState->stringBuffer.bytes.ptr[encodeState->atIndex++] = 'r';
+                                break;
+                            case '\t':
+                                encodeState->stringBuffer.bytes.ptr[encodeState->atIndex++] = '\\';
+                                encodeState->stringBuffer.bytes.ptr[encodeState->atIndex++] = 't';
+                                break;
+                            default:
+                                if(JK_EXPECT_F(jk_encode_printf(encodeState, NULL, 0UL, NULL, "\\u%4.4x", utf8String[utf8Idx])))
+                                {
+                                    return(1);
+                                }
+                                break;
+                        }
+                    }
+                    else
+                    {
+                        if(JK_EXPECT_F(utf8String[utf8Idx] >= 0x80U) && (encodeState->serializeOptionFlags & JKSerializeOptionEscapeUnicode))
+                        {
+                            const unsigned char *nextValidCharacter = NULL;
+                            UTF32                u32ch              = 0U;
+                            ConversionResult     result;
 
-            if(JK_EXPECT_F((result = ConvertSingleCodePointInUTF8(&utf8String[utf8Idx], &utf8String[usedBytes], (UTF8 const **)&nextValidCharacter, &u32ch)) != conversionOK)) { jk_encode_error(encodeState, @"Error converting UTF8."); return(1); }
-            else {
-            utf8Idx = (nextValidCharacter - utf8String) - 1UL;
-            if(JK_EXPECT_T(u32ch <= 0xffffU)) { if(JK_EXPECT_F(jk_encode_printf(encodeState, NULL, 0UL, NULL, "\\u%4.4x", u32ch)))                                                           { return(1); } }
-            else                              { if(JK_EXPECT_F(jk_encode_printf(encodeState, NULL, 0UL, NULL, "\\u%4.4x\\u%4.4x", (0xd7c0U + (u32ch >> 10)), (0xdc00U + (u32ch & 0x3ffU))))) { return(1); } }
-            }
-            } else {
-            if(JK_EXPECT_F(utf8String[utf8Idx] == '\"') || JK_EXPECT_F(utf8String[utf8Idx] == '\\')) { encodeState->stringBuffer.bytes.ptr[encodeState->atIndex++] = '\\'; }
-            encodeState->stringBuffer.bytes.ptr[encodeState->atIndex++] = utf8String[utf8Idx];
-            }
-            }
-            }
-            NSCParameterAssert((encodeState->atIndex + 1UL) < encodeState->stringBuffer.bytes.length);
-            if(JK_EXPECT_T((encodeState->encodeOption & JKEncodeOptionStringObjTrimQuotes) == 0UL)) { encodeState->stringBuffer.bytes.ptr[encodeState->atIndex++] = '\"'; }
-            jk_encode_updateCache(encodeState, cacheSlot, startingAtIndex, object);
-            return(0);
+                            if(JK_EXPECT_F((result = ConvertSingleCodePointInUTF8(&utf8String[utf8Idx], &utf8String[usedBytes], (UTF8 const **)&nextValidCharacter, &u32ch)) != conversionOK))
+                            {
+                                jk_encode_error(encodeState, @"Error converting UTF8."); return(1);
+                            }
+                            else
+                            {
+                                utf8Idx = (nextValidCharacter - utf8String) - 1UL;
+                                if(JK_EXPECT_T(u32ch <= 0xffffU))
+                                {
+                                    if(JK_EXPECT_F(jk_encode_printf(encodeState, NULL, 0UL, NULL, "\\u%4.4x", u32ch)))
+                                    {
+                                        return(1);
+                                    }
+                                }
+                                else
+                                {
+                                    if(JK_EXPECT_F(jk_encode_printf(encodeState, NULL, 0UL, NULL, "\\u%4.4x\\u%4.4x", (0xd7c0U + (u32ch >> 10)), (0xdc00U + (u32ch & 0x3ffU)))))
+                                    {
+                                        return(1);
+                                    }
+                                }
+                            }
+                        }
+                        else
+                        {
+                            if(JK_EXPECT_F(utf8String[utf8Idx] == '\"') || JK_EXPECT_F(utf8String[utf8Idx] == '\\'))
+                            {
+                                encodeState->stringBuffer.bytes.ptr[encodeState->atIndex++] = '\\';
+                            }
+                            encodeState->stringBuffer.bytes.ptr[encodeState->atIndex++] = utf8String[utf8Idx];
+                        }
+                    }
+                }
+                NSCParameterAssert((encodeState->atIndex + 1UL) < encodeState->stringBuffer.bytes.length);
+                if(JK_EXPECT_T((encodeState->encodeOption & JKEncodeOptionStringObjTrimQuotes) == 0UL))
+                {
+                    encodeState->stringBuffer.bytes.ptr[encodeState->atIndex++] = '\"';
+                }
+                jk_encode_updateCache(encodeState, cacheSlot, startingAtIndex, object);
+                return(0);
             }
         }
         break;
